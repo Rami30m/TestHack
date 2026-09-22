@@ -1,0 +1,110 @@
+openapi: 3.1.0
+info:
+  title: Calculator API
+  version: 1.0.0
+  description: HTTP API для базовых арифметических операций над числами JSON.
+servers:
+  - url: http://localhost:8000
+    description: Локальный сервер разработки
+paths:
+  /api/v1/calculate:
+    post:
+      operationId: calculate
+      summary: Выполнить арифметическую операцию
+      description: |
+        Операция выполняется над `a` и `b` в указанном порядке.
+        Входные и выходные значения — числа JSON; вычисления могут иметь
+        погрешность чисел с плавающей точкой. Успешный результат должен быть
+        конечным числом. При делении на ноль или получении неконечного
+        результата сервер возвращает ошибку, а не `NaN` или `Infinity`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculationRequest'
+            examples:
+              addition:
+                value:
+                  operation: add
+                  a: 12
+                  b: 3
+      responses:
+        '200':
+          description: Вычисление выполнено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculationResponse'
+              examples:
+                addition:
+                  value:
+                    result: 15
+        '400':
+          description: Некорректный JSON или запрос не соответствует схеме
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_REQUEST
+                  message: "Поле operation должно содержать допустимую операцию."
+        '422':
+          description: Операцию невозможно выполнить с переданными числами
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                divisionByZero:
+                  value:
+                    error:
+                      code: DIVISION_BY_ZERO
+                      message: "Деление на ноль невозможно."
+                nonFiniteResult:
+                  value:
+                    error:
+                      code: NON_FINITE_RESULT
+                      message: "Результат не является конечным числом."
+components:
+  schemas:
+    CalculationRequest:
+      type: object
+      additionalProperties: false
+      required: [operation, a, b]
+      properties:
+        operation:
+          type: string
+          enum: [add, subtract, multiply, divide]
+          description: Порядок операндов сохраняется для вычитания и деления.
+        a:
+          type: number
+          description: Первый операнд.
+        b:
+          type: number
+          description: Второй операнд.
+    CalculationResponse:
+      type: object
+      additionalProperties: false
+      required: [result]
+      properties:
+        result:
+          type: number
+          description: Конечный результат вычисления.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [INVALID_REQUEST, DIVISION_BY_ZERO, NON_FINITE_RESULT]
+            message:
+              type: string
+              description: Сообщение для пользователя; клиенту следует ориентироваться на code.
